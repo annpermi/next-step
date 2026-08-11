@@ -1,0 +1,28 @@
+{
+  "name": "nextstepconstruction-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "start": "NODE_ENV=production tsx server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/middie": "^9.1.0",
+    "@fastify/static": "^9.0.0",
+    "fastify": "^5.7.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^5.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
