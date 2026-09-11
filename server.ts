@@ -124,6 +124,12 @@ async function createServer() {
       decorateReply: false
     });
 
+    await app.register(fastifyStatic, {
+      root: join(clientDist, 'roomwalk'),
+      prefix: '/roomwalk/',
+      decorateReply: false
+    });
+
     app.get('/logo.svg', async (_, reply) => {
       const logoFile = await fs.readFile(join(clientDist, 'logo.svg'));
       return reply.type('image/svg+xml').send(logoFile);

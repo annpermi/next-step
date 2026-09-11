@@ -6,3 +6,7 @@ dist/
 npm-debug.log*
 .DS_Store
 claude.md
+
+# roomwalk pipeline scratch: source segments, Swift binaries, intermediate
+# frames. The served output lives in public/roomwalk/ and is committed.
+assets/roomwalk/

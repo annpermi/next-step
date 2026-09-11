@@ -13,20 +13,45 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Compensates for the fixed header when jumping to an anchor (#about etc.)
+     so the target isn't rendered partly behind it. */
+  scroll-padding-top: var(--site-header-height);
+}
+
 body {
   margin: 0;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   color: var(--ink);
   background: linear-gradient(180deg, #f7fafb 0%, #edf3f7 60%, #f6f1e8 100%);
+  /* .roomwalk grows from 100vh to 460vh in a post-mount effect (setIsScrubbing).
+     That's exactly the kind of dramatic, off-screen-adjacent resize that makes
+     the browser's scroll anchoring "helpfully" jump the scroll position to
+     compensate — disable it site-wide rather than chase which node it picks. */
+  overflow-anchor: none;
 }
 
 .site-shell {
   min-height: 100vh;
 }
 
+main {
+  /* Defensive: guarantees page content always paints above the roomwalk hero
+     if they ever occupy the same scroll range. */
+  position: relative;
+  z-index: 5;
+}
+
 .site-header {
-  position: sticky;
+  /* Fixed, not sticky: sticky still reserves its box in normal flow, which
+     pushed the roomwalk hero down and left a visible band above it even
+     while "transparent". Fixed removes it from flow entirely so it can
+     truly float over the hero — anchor-jump targets (#about etc.) are
+     compensated separately via html{scroll-padding-top}. */
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
   height: var(--site-header-height);
   padding: 0 clamp(1rem, 4vw, 3rem);
@@ -35,6 +60,27 @@ body {
   border-bottom: 1px solid rgba(17, 40, 58, 0.08);
   display: flex;
   align-items: center;
+  transition: background-color 240ms ease, border-color 240ms ease;
+}
+
+.site-header--transparent {
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+
+.site-header--transparent .nav-links,
+.site-header--transparent .menu-toggle {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.site-header--transparent .brand-link {
+  /* Inset from the corner, no background — just the mark itself, with a
+     soft shadow so it stays legible over any part of the photo. */
+  margin-top: 0.6rem;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.45));
 }
 
 .site-nav {
@@ -193,6 +239,196 @@ body {
   filter: saturate(1.03);
 }
 
+/* Roomwalk scroll hero -------------------------------------------------- */
+/* Generated Cape Cod interior scrubbed frame-by-frame on scroll. The plugin
+   pipeline (roomwalk skill) produced the frames in /public/roomwalk/frames. */
+
+.roomwalk {
+  position: relative;
+  background: #10202b;
+  /* Static fallback height: before the frame scrubber attaches, or with
+     reduced motion / missing frames, the poster fills one viewport. */
+  min-height: 100vh;
+}
+
+.roomwalk.is-scrubbing {
+  /* Scroll travel that drives the walk. ~4.6 screens keeps the pace unhurried
+     (roughly 8 px of scroll per frame after the timeline weighting). */
+  height: 460vh;
+}
+
+.roomwalk-stage {
+  /* Full-bleed: runs behind the header, which floats transparent over it
+     (see .site-header--transparent) until the hero scrolls out of view. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #10202b;
+}
+
+.roomwalk-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #10202b url("/roomwalk/poster.jpg") center / cover no-repeat;
+}
+
+/* Lower-third: short title + CTA, solid enough to read over any frame — no
+   page-height gradient wash over the walkthrough. As the user scrolls past
+   the establishing view, a second row fades in below with that stop's real
+   project photos. */
+.roomwalk-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1.4rem clamp(1.25rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  /* Solid enough on its own (0.82 alpha) without a blur — backdrop-filter on
+     a sticky element is a known source of double-paint/ghosting artifacts
+     during the scroll where it releases from being pinned. */
+  background: rgba(9, 20, 28, 0.9);
+}
+
+.roomwalk-bar-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.roomwalk-bar-main h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.1rem, 2.4vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.roomwalk-bar-main .primary-btn {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.roomwalk-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  animation: roomwalk-rise 380ms ease both;
+}
+
+.roomwalk-preview-text {
+  max-width: 36ch;
+}
+
+.roomwalk-preview-title {
+  margin: 0 0 0.2rem;
+  color: #f0be7d;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.roomwalk-preview-text p:last-child {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.roomwalk-proof {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.roomwalk-proof-item {
+  width: clamp(58px, 9vw, 84px);
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.roomwalk-proof-item:hover {
+  transform: translateY(-3px);
+  border-color: #f0be7d;
+}
+
+.roomwalk-proof-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@keyframes roomwalk-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The walk still scrubs — it is driven entirely by the user's scroll, not by
+     autoplay — but drop the incidental fade on the preview row. */
+  .roomwalk-preview {
+    animation: none;
+  }
+}
+
+.footer-note {
+  max-width: 60ch;
+  margin: 0.5rem auto 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
+@media (max-width: 640px) {
+  .roomwalk.is-scrubbing {
+    height: 360vh;
+  }
+
+  .roomwalk-bar {
+    padding: 1.1rem 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .roomwalk-bar-main,
+  .roomwalk-preview {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .roomwalk-bar-main .primary-btn {
+    text-align: center;
+  }
+
+  .roomwalk-preview-text {
+    max-width: none;
+  }
+
+  .roomwalk-proof {
+    justify-content: center;
+  }
+}
+
 .section {
   width: min(1100px, 92vw);
   margin: 0 auto;
@@ -231,7 +467,7 @@ body {
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 1rem;
 }
 

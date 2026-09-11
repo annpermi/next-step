@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 
 type EstimateFormData = {
@@ -39,68 +39,361 @@ type EstimateApiResponse = {
   message: string;
 };
 
+// Imagery below is representative Cape Cod work generated for this demo site —
+// swap in real project photos before using it for a live business.
 const featuredProjects: Project[] = [
   {
-    title: "Cedar Shingle Facade Refresh",
+    title: "Trim & Finish Carpentry",
     location: "Chatham, MA",
     images: [
       {
-        src: "/projects/cedar-facade.svg",
-        alt: "Cedar shingle facade and white trim exterior renovation",
+        src: "/projects/trim-1.jpg",
+        alt: "Deep white window casing with a stool, apron and cushioned window seat",
       },
       {
-        src: "/projects/cedar-facade-2.svg",
-        alt: "Cape Cod home with cedar siding and refreshed trim details",
+        src: "/projects/trim-2.jpg",
+        alt: "Raised-panel wainscoting running up a hallway over a wide-plank floor",
       },
       {
-        src: "/projects/cedar-facade-3.svg",
-        alt: "Exterior carpentry detail on coastal style cedar facade",
+        src: "/projects/trim-3.jpg",
+        alt: "Crown molding meeting a door casing in crisp painted white woodwork",
+      },
+      {
+        src: "/projects/trim-4.jpg",
+        alt: "Painted white beamed ceiling with tongue-and-groove infill in a living room",
       },
     ],
     description:
-      "Full exterior trim restoration with weather-resistant cedar, custom window boxes, and seaside-grade finish work.",
+      "Custom casing, wainscot, crown and window seats fitted so the joinery reads as original to the house.",
   },
   {
-    title: "Built-In Mudroom and Storage Wall",
+    title: "Custom Built-Ins",
     location: "Barnstable, MA",
     images: [
       {
-        src: "/projects/mudroom-builtin.svg",
-        alt: "Custom mudroom built-ins with bench and storage cabinetry",
+        src: "/projects/builtins-1.jpg",
+        alt: "White shaker built-in bookcases flanking a stone fireplace",
       },
       {
-        src: "/projects/mudroom-builtin-2.svg",
-        alt: "Mudroom storage wall with hooks and overhead cabinets",
+        src: "/projects/builtins-2.jpg",
+        alt: "Custom mudroom bench with cubbies, shiplap wall and iron coat hooks",
       },
       {
-        src: "/projects/mudroom-builtin-3.svg",
-        alt: "Built-in bench and cabinetry in a modern coastal mudroom",
+        src: "/projects/builtins-3.jpg",
+        alt: "Window-seat storage bench under a bay window with the lids open",
+      },
+      {
+        src: "/projects/builtins-4.jpg",
+        alt: "Navy painted pantry cabinetry with open shelving and brass cup pulls",
       },
     ],
     description:
-      "Space-saving built-ins with beadboard detailing, bench seating, and hidden utility storage for active families.",
+      "Bookcases, mudroom benches and cabinetry, beadboard-backed and painted in place for a built-with-the-house look.",
   },
   {
-    title: "Nantucket-Inspired Porch Rebuild",
+    title: "Stairs & Railings",
     location: "Yarmouth Port, MA",
     images: [
       {
-        src: "/projects/porch-rebuild.svg",
-        alt: "Coastal style porch with railings and columns",
+        src: "/projects/stairs-1.jpg",
+        alt: "Staircase with square painted balusters, white-oak treads and a square newel",
       },
       {
-        src: "/projects/porch-rebuild-2.svg",
-        alt: "Nantucket style porch columns and marine-grade trim work",
+        src: "/projects/stairs-2.jpg",
+        alt: "Close-up of a stair newel post and profiled oak handrail joinery",
       },
       {
-        src: "/projects/porch-rebuild-3.svg",
-        alt: "Front porch rebuild with clean rail lines and coastal look",
+        src: "/projects/stairs-3.jpg",
+        alt: "Staircase landing with a run of balusters against a white shiplap wall",
+      },
+      {
+        src: "/projects/stairs-4.jpg",
+        alt: "Exterior covered-porch railing with square balusters against cedar shingles",
       },
     ],
     description:
-      "Rebuilt front porch with classic rail profile, marine paint system, and integrated lighting for evening curb appeal.",
+      "Square balusters, white-oak treads and handrails profiled to match the trim package, inside and out.",
+  },
+  {
+    title: "Repairs & Restoration",
+    location: "Wellfleet, MA",
+    images: [
+      {
+        src: "/projects/repairs-1.jpg",
+        alt: "Cape Cod house exterior with new weathered-grey cedar shingles and white trim",
+      },
+      {
+        src: "/projects/repairs-2.jpg",
+        alt: "Rebuilt covered front porch with square painted columns and a beadboard ceiling",
+      },
+      {
+        src: "/projects/repairs-3.jpg",
+        alt: "Restored historic double-hung windows with wood storm sash on a shingled wall",
+      },
+      {
+        src: "/projects/repairs-4.jpg",
+        alt: "Exterior trim carpentry in progress on a house gable with new rake boards",
+      },
+    ],
+    description:
+      "Cedar siding, porch rebuilds, historic window restoration and exterior trim that keeps a home tight against the weather.",
   },
 ];
+
+type RoomWalkStop = {
+  title: string;
+  copy: string;
+  projectIndex: number;
+};
+
+// Stop 0 is the establishing view, shown under the static title with no
+// preview row. Stops 1-3 land near the 1/3, 2/3 and end of the frame run as
+// the camera walks in, each surfacing its matching project's real photos.
+const roomWalkStops: RoomWalkStop[] = [
+  {
+    title: "Trim & finish carpentry",
+    copy: "Custom casing, wainscot and window seats fitted so the joinery looks original to the house.",
+    projectIndex: 0,
+  },
+  {
+    title: "Custom built-ins",
+    copy: "Floor-to-ceiling bookcases and cabinetry, beadboard-backed and painted in place.",
+    projectIndex: 1,
+  },
+  {
+    title: "Stairs & railings",
+    copy: "Square balusters, white-oak treads and a handrail profiled to match the trim package.",
+    projectIndex: 2,
+  },
+  {
+    title: "Repairs & restoration",
+    copy: "The details that keep a Cape Cod home tight against the weather, inside and out.",
+    projectIndex: 3,
+  },
+];
+
+// Scroll rhythm for the frame scrubber: brief hold at each stop, most of the
+// scroll spent travelling. Holds sit on the segment boundaries (0, 1/3, 2/3, 1).
+// Retuning this is a few numbers, never a regeneration.
+const roomWalkTimeline = [
+  { to: 0.04, scroll: 1 }, // settle at the establishing view
+  { to: 0.31, scroll: 3 }, // travel to the built-ins
+  { to: 0.37, scroll: 1 }, // hold on the built-ins (~1/3)
+  { to: 0.63, scroll: 3 }, // travel to the staircase
+  { to: 0.7, scroll: 1 }, //  hold on the staircase (~2/3)
+  { to: 1.0, scroll: 3 }, // travel in to the stair-foot detail
+];
+
+function RoomWalkHero() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [stopIndex, setStopIndex] = useState(0);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const canvas = canvasRef.current;
+    if (!section || !canvas) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let seq: InstanceType<
+      typeof import("./roomwalk/scrollFrames.js").default
+    > | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    // The scrubber attaches its own rAF-throttled scroll handler. This second
+    // handler draws synchronously off the same math, so a starved rAF (some
+    // mobile browsers, backgrounded tabs) can't leave the hero frozen. Scroll
+    // events are already coalesced by the browser and a canvas blit is cheap.
+    const backupScroll = () => {
+      if (!seq) {
+        return;
+      }
+      const last = seq.indices.length - 1;
+      const slot = Math.min(
+        last,
+        Math.max(0, Math.round(seq.curve(seq.progress()) * last)),
+      );
+      seq.draw(slot);
+    };
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+    // Paint the poster onto the canvas ourselves. The scrubber takes a 2d
+    // context with `alpha: false`, which turns the canvas opaque black and hides
+    // the CSS background, so without this the section is black until frame 0
+    // decodes — and stays black if the frames can't be fetched at all.
+    const poster = new Image();
+    const paintPoster = () => {
+      if (cancelled || !poster.complete || poster.naturalWidth === 0) {
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) {
+        return;
+      }
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
+      const scale = Math.max(
+        canvas.width / poster.naturalWidth,
+        canvas.height / poster.naturalHeight,
+      );
+      const w = poster.naturalWidth * scale;
+      const h = poster.naturalHeight * scale;
+      ctx.drawImage(
+        poster,
+        (canvas.width - w) / 2,
+        (canvas.height - h) / 2,
+        w,
+        h,
+      );
+    };
+    poster.onload = paintPoster;
+    poster.src = "/roomwalk/poster.jpg";
+
+    (async () => {
+      try {
+        const manifest = await fetch("/roomwalk/frames/manifest.json", {
+          cache: "force-cache",
+        });
+        const contentType = manifest.headers.get("content-type") || "";
+        if (!manifest.ok || !contentType.includes("json") || cancelled) {
+          // Frames not deployed (e.g. the server isn't serving /roomwalk/):
+          // leave the poster in place and don't grow the section.
+          return;
+        }
+        const { default: ScrollFrames } =
+          await import("./roomwalk/scrollFrames.js");
+        if (cancelled) {
+          return;
+        }
+
+        // Apply the tall scroll-spacer height first, then wait for layout so the
+        // scrubber measures a real canvas size (it caches width/height on start
+        // and only re-reads them on a window resize).
+        setIsScrubbing(true);
+        for (let tries = 0; tries < 40; tries += 1) {
+          await wait(50);
+          if (cancelled) {
+            return;
+          }
+          if (canvas.getBoundingClientRect().height > 0) {
+            break;
+          }
+        }
+
+        seq = new ScrollFrames({
+          canvas,
+          scroller: section,
+          dir: "/roomwalk/frames",
+          manifest: "/roomwalk/frames/manifest.json",
+          fit: "cover",
+          timeline: roomWalkTimeline,
+          // This is the hero — it must respond to scroll even with reduced
+          // motion (the scrub is driven by the user, not autoplay).
+          respectReducedMotion: false,
+          onFrame: (progress: number) => {
+            const next =
+              progress < 0.28 ? 0 : progress < 0.6 ? 1 : progress < 0.9 ? 2 : 3;
+            setStopIndex((prev) => (prev === next ? prev : next));
+          },
+        });
+        await seq.start();
+        if (cancelled) {
+          return;
+        }
+
+        // If frame 0 never blitted (all fetches failed), fall back to the poster
+        // and a short static section instead of a tall black one.
+        if (seq.drawn < 0) {
+          seq.destroy();
+          seq = null;
+          setIsScrubbing(false);
+          paintPoster();
+          console.warn("Room walk frames could not be loaded; showing poster.");
+          return;
+        }
+
+        // Recover if the canvas was measured at 0 (hidden tab, late layout):
+        // any real size change re-triggers the scrubber's own resize handler.
+        resizeObserver = new ResizeObserver(() => {
+          window.dispatchEvent(new Event("resize"));
+        });
+        resizeObserver.observe(canvas);
+
+        window.addEventListener("scroll", backupScroll, { passive: true });
+        backupScroll();
+      } catch (error) {
+        // No frames yet, or the module failed to load: the poster image stays.
+        if (!cancelled) {
+          console.warn("Room walk hero unavailable:", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("scroll", backupScroll);
+      resizeObserver?.disconnect();
+      seq?.destroy?.();
+    };
+  }, []);
+
+  return (
+    <section
+      ref={sectionRef}
+      className={isScrubbing ? "roomwalk is-scrubbing" : "roomwalk"}
+      aria-label="NextStepConstruction — Cape Cod finish carpentry"
+    >
+      <div className="roomwalk-stage">
+        <canvas ref={canvasRef} className="roomwalk-canvas" />
+        <div className="roomwalk-bar">
+          <div className="roomwalk-bar-main">
+            <h2>Cape Cod finish carpentry, built to last</h2>
+            <a className="primary-btn" href="#estimate">
+              Request a Free Estimate
+            </a>
+          </div>
+          {stopIndex > 0 ? (
+            <div className="roomwalk-preview" key={stopIndex}>
+              <div className="roomwalk-preview-text">
+                <p className="roomwalk-preview-title">
+                  {roomWalkStops[stopIndex].title}
+                </p>
+                <p>{roomWalkStops[stopIndex].copy}</p>
+              </div>
+              <div className="roomwalk-proof">
+                {featuredProjects[roomWalkStops[stopIndex].projectIndex].images
+                  .slice(0, 3)
+                  .map((image) => (
+                    <a
+                      key={image.src}
+                      className="roomwalk-proof-item"
+                      href="#projects"
+                      aria-label={`See ${
+                        featuredProjects[roomWalkStops[stopIndex].projectIndex]
+                          .title
+                      } in projects`}
+                    >
+                      <img src={image.src} alt={image.alt} loading="lazy" />
+                    </a>
+                  ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const initialFormData: EstimateFormData = {
   name: "",
@@ -117,12 +410,16 @@ const initialCarouselIndexes = featuredProjects.reduce<Record<string, number>>(
     acc[project.title] = 0;
     return acc;
   },
-  {}
+  {},
 );
 
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  // True while the roomwalk hero is (at least partly) in view: the nav floats
+  // transparent over it, logo only. Starts true — the page always loads at the
+  // top, on the hero — so server and client render the same on first paint.
+  const [navOverHero, setNavOverHero] = useState(true);
   const [formData, setFormData] = useState<EstimateFormData>(initialFormData);
   const [status, setStatus] = useState<SubmitStatus>({
     loading: false,
@@ -137,7 +434,7 @@ export default function App() {
   const onChange = (
     event: ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    >,
   ) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -146,7 +443,7 @@ export default function App() {
   const changeSlide = (
     projectTitle: string,
     totalImages: number,
-    delta: number
+    delta: number,
   ) => {
     setCarouselIndexes((prev) => {
       const currentIndex = prev[projectTitle] ?? 0;
@@ -203,6 +500,21 @@ export default function App() {
     };
   }, [lightbox]);
 
+  useEffect(() => {
+    const heroSection = document.querySelector<HTMLElement>(".roomwalk");
+    if (!heroSection) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setNavOverHero(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(heroSection);
+
+    return () => observer.disconnect();
+  }, []);
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus({ loading: true, message: "", error: false });
@@ -230,7 +542,12 @@ export default function App() {
 
   return (
     <div className="site-shell">
-      <header className="site-header" id="top">
+      <header
+        className={
+          navOverHero ? "site-header site-header--transparent" : "site-header"
+        }
+        id="top"
+      >
         <nav className="site-nav" aria-label="Primary">
           <a
             className="brand-link"
@@ -242,6 +559,8 @@ export default function App() {
                 className="brand-logo"
                 src="/logo.svg"
                 alt="NextStep Construction logo"
+                width={160}
+                height={80}
                 onError={() => setLogoFailed(true)}
               />
             )}
@@ -287,22 +606,7 @@ export default function App() {
         </nav>
       </header>
 
-      <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-content">
-          <p className="eyebrow">BUILT TO LAST • CRAFTED WITH PRECISION</p>
-          <h1 id="hero-title">
-            Crafting Superior Woodwork &amp; Quality Interiors
-          </h1>
-          <p>
-            Cape Cod finish carpentry and custom interiors. From custom trim and
-            flooring to built-ins and woodwork, we bring your vision to life
-            with timeless craftsmanship and attention to detail.
-          </p>
-          <a className="primary-btn" href="#estimate">
-            Request a Free Estimate
-          </a>
-        </div>
-      </section>
+      <RoomWalkHero />
 
       <main>
         <section id="about" className="section about">
@@ -401,9 +705,7 @@ export default function App() {
             })}
           </div>
           <p className="projects-note">
-            Tip: replace files in <code>/public/projects</code> with your real
-            project photos using the same names. Put your uploaded logo at{" "}
-            <code>/public/logo.svg</code> (or update the path in the header).
+            Representative Cape Cod work — imagery shown for demonstration.
           </p>
         </section>
 
@@ -517,6 +819,11 @@ export default function App() {
 
       <footer className="footer">
         <p>© {new Date().getFullYear()} NextStepConstruction</p>
+        <p className="footer-note">
+          The walkthrough interior is a styled Cape Cod set used to frame the
+          work, not a photograph of a specific project. Project thumbnails are
+          real NextStepConstruction jobs.
+        </p>
       </footer>
 
       {lightbox ? (
