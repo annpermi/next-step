@@ -506,9 +506,23 @@ export default function App() {
       return undefined;
     }
 
+    // Anchor links (#about etc.) land scroll-padding-top short of their
+    // target so the fixed header has room to sit above it. That gap can
+    // still contain a sliver of this very tall section's bottom edge, which
+    // without this margin keeps isIntersecting true — the header stays
+    // transparent right where the anchor jump lands, instead of flipping
+    // solid in sync with it. Shrinking the observed root by the header
+    // height excludes that sliver.
+    const headerHeight =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--site-header-height",
+        ),
+      ) || 0;
+
     const observer = new IntersectionObserver(
       ([entry]) => setNavOverHero(entry.isIntersecting),
-      { threshold: 0 },
+      { threshold: 0, rootMargin: `-${headerHeight}px 0px 0px 0px` },
     );
     observer.observe(heroSection);
 
