@@ -19,7 +19,10 @@ The interior is a generated stage, not a photograph of a real NextStepConstructi
 
 ### Demo
 
-_Recording to be added._
+
+
+https://github.com/user-attachments/assets/d91e403e-846d-4f18-a55e-bd00fad94169
+
 
 ## Quick start
 
